@@ -92,6 +92,39 @@ record ServiceTestToBe(
 - 서비스 통합 시나리오 테스트
 - 의존성 주입 검증
 
+## 작업 히스토리
+
+### 커밋 순서별 작업 내용
+
+1. [**H2 인메모리 데이터베이스 설정**](https://github.com/junwoochoi-kurly/example-code/commit/3c7df5cf3ee0637ce600ea0a312af73a159bb320)
+   - H2 의존성 추가 및 인메모리 데이터베이스 설정
+   - 테스트 환경을 위한 기본 데이터베이스 구성
+2. [**테스트용 서비스 클래스 생성**](https://github.com/junwoochoi-kurly/example-code/commit/02024f7767d2e63af46cb0e7278058f16a71d50b)
+   - `UserService`: 사용자 조회 및 생성 기능
+   - `EmailService`: 이메일 유효성 검증 및 발송 기능  
+   - `NotificationService`: 알림 발송 기능
+   - 의존성 주입 예제를 위한 서비스 레이어 구성
+3. [**JUnit Platform 설정 추가**](https://github.com/junwoochoi-kurly/example-code/commit/023b61ec4332c44b57708bf104c74a930a3e5ff7)
+   - `junit-platform.properties` 파일 생성
+   - `spring.test.constructor.autowire.mode=all` 설정
+   - 생성자 파라미터 자동 주입 활성화
+4. [**AS-IS 테스트 예제 구현**](https://github.com/junwoochoi-kurly/example-code/commit/62e420bebede91e296189e2965cb51ce196a5802) 
+   - `ServiceTestAsIs.java` 생성
+   - 기존 `@Autowired` 어노테이션 방식 구현
+   - 필드 주입을 통한 전통적인 테스트 작성법 시연
+5. [**TO-BE 테스트 예제 구현**](https://github.com/junwoochoi-kurly/example-code/commit/bcaaee502bf0d47c0a71d9dc2ac5537de92a7ca4)
+   - `ServiceTestToBe.java` 생성
+   - record 기반 생성자 주입 방식 구현
+   - `@TestConstructor` 어노테이션 활용 / JUnit 설정 활용
+   - 개선된 테스트 작성법 시연 및 참고 문서 링크 포함
+
+### 주요 개선 효과
+
+- **코드 간소화**: `@Autowired` 어노테이션 3개 → 0개
+- **불변성 보장**: 필드 주입 → 생성자 주입 (record 활용)
+- **타입 안전성**: 컴파일 타임 의존성 검증
+- **유지보수성**: 보일러플레이트 코드 제거
+
 ---
 
 이 예제를 통해 Spring Boot 테스트에서 더 깔끔하고 안전한 의존성 주입 방법을 학습하세요.
