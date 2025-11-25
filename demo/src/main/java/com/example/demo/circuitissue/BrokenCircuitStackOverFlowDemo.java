@@ -1,14 +1,16 @@
-package com.example.demo;
+package com.example.demo.circuitissue;
 
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
-
-import java.util.concurrent.*;
+import java.util.concurrent.Executors;
+import java.util.logging.Logger;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-@Slf4j
 public class BrokenCircuitStackOverFlowDemo {
+
+    private static final Logger log = Logger.getLogger(BrokenCircuitStackOverFlowDemo.class.getName());
 
     static class BrokenCircuit {
         private final AtomicReference<String> state = new AtomicReference<>("OPEN");
@@ -17,8 +19,11 @@ public class BrokenCircuitStackOverFlowDemo {
         private final ScheduledExecutorService scheduler =
                 Executors.newSingleThreadScheduledExecutor();
 
-        @Getter
         private ScheduledFuture<?> transitionFuture;
+        
+        public ScheduledFuture<?> getTransitionFuture() {
+            return transitionFuture;
+        }
 
         public static void main(String[] args) throws Exception {
             BrokenCircuit brokenCircuit = new BrokenCircuit();
@@ -47,19 +52,18 @@ public class BrokenCircuitStackOverFlowDemo {
         // 자동 OPEN -> HALF_OPEN 전환 스케줄
         public void scheduleAutoTransition() {
             transitionFuture = scheduler.schedule(() -> {
-                log.info("[T] Future started in {}", Thread.currentThread().getName());
+                log.info("[T] Future started in " + Thread.currentThread().getName());
                 try {
                     toHalfOpenState();
                 } finally {
-                    log.info("[T] Future finished in {}", Thread.currentThread().getName());
+                    log.info("[T] Future finished in " + Thread.currentThread().getName());
                 }
             }, 0, TimeUnit.MILLISECONDS);  // 바로 실행되게 0으로 설정
         }
 
         // Resilience4j OpenState.toHalfOpenState 느낌의 구조
         private synchronized void toHalfOpenState() {
-            log.info("  toHalfOpenState() enter, isOpenFlag={}, state={}, thread={}",
-                    isOpenFlag.get(), state.get(), Thread.currentThread().getName());
+            log.info("  toHalfOpenState() enter, isOpenFlag=" + isOpenFlag.get() + ", state=" + state.get() + ", thread=" + Thread.currentThread().getName());
 
             if (isOpenFlag.compareAndSet(true, false)) {
                 log.info("  isOpenFlag set to false");
@@ -72,8 +76,8 @@ public class BrokenCircuitStackOverFlowDemo {
                     state.set("HALF_OPEN");
                     log.info("  state changed to HALF_OPEN");
                 } catch (InterruptedException e) {
-                    log.warn("  >>> Interrupted in the middle of transition!", e);
-                    log.warn("  >>> current state={}, isOpenFlag={}", state.get(), isOpenFlag.get());
+                    log.warning("  >>> Interrupted in the middle of transition!: " + e.getMessage());
+                    log.warning("  >>> current state=" + state.get() + ", isOpenFlag=" + isOpenFlag.get());
                     Thread.currentThread().interrupt();
                 }
             } else {
@@ -87,11 +91,11 @@ public class BrokenCircuitStackOverFlowDemo {
          * - state == OPEN + isOpenFlag == false → 재귀 호출 (무한 루프) → StackOverflowError
          */
         public void tryAcquire() {
-            log.info("tryAcquire() called: state={}, isOpenFlag={}", state.get(), isOpenFlag.get());
+            log.info("tryAcquire() called: state=" + state.get() + ", isOpenFlag=" + isOpenFlag.get());
 
             // OPEN이 아니면 그냥 반환 (정상적인 케이스)
             if (!"OPEN".equals(state.get())) {
-                log.info("  -> state is not OPEN ({}), returning.", state.get());
+                log.info("  -> state is not OPEN (" + state.get() + "), returning.");
                 return;
             }
 
@@ -104,15 +108,15 @@ public class BrokenCircuitStackOverFlowDemo {
 
             // 여기로 오면: state == OPEN 이면서 isOpenFlag == false
             // = “반쯤만 전환된(Open인데 open 아니라고 찍힌) 깨진 상태”
-            log.warn("  -> OPEN + isOpenFlag=false: inconsistent state detected, recursing...");
+            log.warning("  -> OPEN + isOpenFlag=false: inconsistent state detected, recursing...");
             // 무한 재귀 → 결국 StackOverflowError 발생
             tryAcquire();
         }
 
         public void printStatus() {
             log.info("=== FINAL STATUS ===");
-            log.info("state      = {}", state.get());
-            log.info("isOpenFlag = {}", isOpenFlag.get());
+            log.info("state      = " + state.get());
+            log.info("isOpenFlag = " + isOpenFlag.get());
         }
 
         public void shutdown() {
